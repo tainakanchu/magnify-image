@@ -1,0 +1,259 @@
+.app {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+}
+
+.controls {
+  margin: 2rem 0;
+  display: flex;
+  justify-content: center;
+}
+
+.controls label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  font-size: 1.1rem;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 1rem 2rem;
+  border-radius: 12px;
+  border: 1px solid #ddd;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s;
+}
+
+.controls label:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.controls input[type='number'] {
+  width: 100px;
+  padding: 0.5rem;
+  font-size: 1.1rem;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  text-align: center;
+  outline: none;
+  transition: all 0.2s;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.controls input[type='number']:focus {
+  border-color: #646cff;
+  transform: scale(1.05);
+  box-shadow: 0 0 0 3px rgba(100, 108, 255, 0.2);
+}
+
+.controls input[type='number']:hover {
+  border-color: #888;
+}
+
+.drop-zone {
+  min-height: 300px;
+  border: 3px dashed #ccc;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  margin: 2rem 0;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.drop-zone.dragging {
+  border-color: #646cff;
+  background-color: rgba(100, 108, 255, 0.1);
+  transform: scale(1.02);
+  box-shadow: 0 8px 25px rgba(100, 108, 255, 0.3);
+}
+
+.drop-message {
+  font-size: 1.2rem;
+  color: #888;
+  padding: 2rem;
+  text-align: center;
+}
+
+.drop-message p {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.drop-message p:before {
+  content: '📸';
+  font-size: 2rem;
+}
+
+.image-display {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  align-items: start;
+}
+
+.original-image,
+.magnified-image {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #ddd;
+  border-radius: 12px;
+  padding: 1.5rem;
+  background-color: rgba(255, 255, 255, 0.05);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s;
+}
+
+.original-image:hover,
+.magnified-image:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 15px rgba(0, 0, 0, 0.15);
+}
+
+.original-image img,
+.magnified-image img {
+  max-width: 100%;
+  max-height: 500px;
+  object-fit: contain;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.magnified-image img {
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+}
+
+.download-button {
+  margin-top: 1rem;
+  background-color: #646cff;
+  color: white;
+  border: none;
+  padding: 0.8rem 1.5rem;
+  border-radius: 6px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.download-button:hover {
+  background-color: #535bf2;
+}
+
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem;
+  gap: 1.5rem;
+  border: 1px solid #ddd;
+  border-radius: 12px;
+  background-color: rgba(255, 255, 255, 0.05);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  grid-column: 1 / -1;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #646cff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.loading-container p {
+  margin: 0;
+  font-size: 1.1rem;
+  color: #888;
+}
+
+.error-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem;
+  gap: 1.5rem;
+  border: 1px solid #ff6b6b;
+  border-radius: 12px;
+  background-color: rgba(255, 107, 107, 0.1);
+  box-shadow: 0 4px 6px rgba(255, 107, 107, 0.2);
+  grid-column: 1 / -1;
+}
+
+.error-message {
+  margin: 0;
+  font-size: 1.1rem;
+  color: #d63031;
+  text-align: center;
+}
+
+.retry-button {
+  background-color: #ff6b6b;
+  color: white;
+  border: none;
+  padding: 0.6rem 1.2rem;
+  border-radius: 6px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.retry-button:hover {
+  background-color: #e55656;
+}
+
+@media (max-width: 1024px) {
+  .image-display {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .app {
+    padding: 1rem;
+  }
+
+  .controls label {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .controls input[type='number'] {
+    width: 80px;
+  }
+
+  .original-image,
+  .magnified-image {
+    padding: 1rem;
+  }
+
+  .original-image img,
+  .magnified-image img {
+    max-height: 300px;
+  }
+}
