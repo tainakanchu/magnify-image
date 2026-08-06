@@ -144,6 +144,25 @@ const App: React.FC = () => {
     }
   }, [originalImage])
 
+  useEffect(() => {
+    const handlePaste = (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items
+      if (!items) return
+      const imageItem = Array.from(items).find((item) =>
+        item.type.startsWith('image/')
+      )
+      if (!imageItem) return
+      // テキスト等の通常ペーストを妨げないよう、画像が見つかったときのみ preventDefault する
+      e.preventDefault()
+      const file = imageItem.getAsFile()
+      if (file) {
+        processFile(file)
+      }
+    }
+    window.addEventListener('paste', handlePaste)
+    return () => window.removeEventListener('paste', handlePaste)
+  }, [processFile])
+
   const handleMagnificationChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const value = parseInt(e.target.value)
@@ -367,7 +386,7 @@ const App: React.FC = () => {
             </svg>
             <p className="drop-message-text">画像をここにドラッグ&ドロップ</p>
             <p className="drop-message-hint">
-              または <span>ファイルを選択</span>
+              または <span>ファイルを選択</span> / Cmd/Ctrl+V でペースト
             </p>
           </div>
         )}
