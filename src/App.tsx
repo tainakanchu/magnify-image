@@ -1,5 +1,12 @@
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import './App.css'
+import {
+  buildMagnifiedPdf,
+  destroyPdfDocument,
+  loadPdfDocument,
+  renderPdfPage,
+} from './pdf'
+import type { PDFDocumentProxy } from './pdf'
 
 const PRESETS = [2, 4, 8, 16] as const
 const MM_PER_INCH = 25.4
@@ -38,8 +45,15 @@ const App: React.FC = () => {
     const saved = localStorage.getItem('printWidthMm')
     return saved ? parseFloat(saved) : 210
   })
+  const [pdfPageCount, setPdfPageCount] = useState<number>(0)
+  const [pdfPage, setPdfPage] = useState<number>(1)
+  const [pdfExportProgress, setPdfExportProgress] = useState<{
+    done: number
+    total: number
+  } | null>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const pdfDocRef = useRef<PDFDocumentProxy | null>(null)
 
   const magnifyImage = useCallback((imageUrl: string, scale: number) => {
     setIsProcessing(true)
@@ -85,13 +99,94 @@ const App: React.FC = () => {
     img.src = imageUrl
   }, [])
 
+  const clearPdf = useCallback(() => {
+    if (pdfDocRef.current) {
+      destroyPdfDocument(pdfDocRef.current)
+      pdfDocRef.current = null
+    }
+    setPdfPageCount(0)
+    setPdfPage(1)
+  }, [])
+
+  const magnifyPdfPage = useCallback(
+    async (pageNumber: number, scale: number) => {
+      const doc = pdfDocRef.current
+      if (!doc) return
+      setIsProcessing(true)
+      setMagnifiedImage(null)
+      setError(null)
+      try {
+        const rendered = await renderPdfPage(doc, pageNumber, scale)
+        setMagnifiedImage(rendered.dataUrl)
+      } catch {
+        setError('PDF の描画に失敗しました')
+      } finally {
+        setIsProcessing(false)
+      }
+    },
+    []
+  )
+
+  // Original は viewport scale 1（72dpi）で描き、そのサイズを拡大計算の基準にする
+  const showPdfPage = useCallback(
+    async (pageNumber: number, scale: number) => {
+      const doc = pdfDocRef.current
+      if (!doc) return
+      setIsProcessing(true)
+      try {
+        const base = await renderPdfPage(doc, pageNumber, 1)
+        setOriginalImage(base.dataUrl)
+        setImageSize({ width: base.width, height: base.height })
+      } catch {
+        setIsProcessing(false)
+        setError('PDF の描画に失敗しました')
+        return
+      }
+      await magnifyPdfPage(pageNumber, scale)
+    },
+    [magnifyPdfPage]
+  )
+
+  const processPdf = useCallback(
+    async (file: File) => {
+      clearPdf()
+      setOriginalImage(null)
+      setMagnifiedImage(null)
+      setImageSize(null)
+      setIsProcessing(true)
+      try {
+        const doc = await loadPdfDocument(await file.arrayBuffer())
+        pdfDocRef.current = doc
+        setPdfPageCount(doc.numPages)
+        await showPdfPage(1, magnification)
+      } catch (err) {
+        setIsProcessing(false)
+        setError(
+          err instanceof Error && err.name === 'PasswordException'
+            ? 'パスワード付き PDF には対応していません'
+            : 'PDF の読み込みに失敗しました'
+        )
+      }
+    },
+    [clearPdf, showPdfPage, magnification]
+  )
+
   const processFile = useCallback(
     (file: File) => {
       setError(null)
-      if (!file.type.startsWith('image/')) {
-        setError('画像ファイルを選択してください')
+      // type が空になる環境があるため、その場合は拡張子で PDF を判定する
+      if (
+        file.type === 'application/pdf' ||
+        (!file.type && file.name.toLowerCase().endsWith('.pdf'))
+      ) {
+        void processPdf(file)
         return
       }
+      if (!file.type.startsWith('image/')) {
+        setError('画像または PDF ファイルを選択してください')
+        return
+      }
+      clearPdf()
       const reader = new FileReader()
       reader.onload = (event) => {
         const imageUrl = event.target?.result as string
@@ -103,7 +198,7 @@ const App: React.FC = () => {
       }
       reader.readAsDataURL(file)
     },
-    [magnification, magnifyImage]
+    [magnification, magnifyImage, clearPdf, processPdf]
   )
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -202,30 +297,73 @@ const App: React.FC = () => {
     }
   }, [magnifiedSize, printWidthMm])
 
+  // 画像 / PDF のどちらでも、現在のソースを指定倍率で描き直す
+  const remagnify = useCallback(
+    (scale: number) => {
+      if (pdfDocRef.current) {
+        void magnifyPdfPage(pdfPage, scale)
+      } else if (originalImage) {
+        magnifyImage(originalImage, scale)
+      }
+    },
+    [originalImage, magnifyImage, magnifyPdfPage, pdfPage]
+  )
+
   const handleMagnificationBlur = useCallback(() => {
-    if (originalImage) {
-      magnifyImage(originalImage, magnification)
-    }
-  }, [originalImage, magnifyImage, magnification])
+    remagnify(magnification)
+  }, [remagnify, magnification])
 
   const handlePreset = useCallback(
     (value: number) => {
       setMagnification(value)
-      if (originalImage) {
-        magnifyImage(originalImage, value)
-      }
+      remagnify(value)
     },
-    [originalImage, magnifyImage]
+    [remagnify]
   )
 
-  const downloadImage = useCallback(() => {
-    if (magnifiedImage) {
+  const handlePageChange = useCallback(
+    (delta: number) => {
+      const next = pdfPage + delta
+      if (next < 1 || next > pdfPageCount) return
+      setPdfPage(next)
+      void showPdfPage(next, magnification)
+    },
+    [pdfPage, pdfPageCount, magnification, showPdfPage]
+  )
+
+  const download = useCallback(
+    (href: string, extension: string) => {
       const link = document.createElement('a')
-      link.href = magnifiedImage
-      link.download = `magnified_${magnification}x.png`
+      link.href = href
+      link.download = `magnified_${magnification}x.${extension}`
       link.click()
+    },
+    [magnification]
+  )
+
+  // PDF は表示中のページだけでなく全ページを拡大して 1 つの PDF に束ねる
+  const downloadMagnified = useCallback(async () => {
+    const doc = pdfDocRef.current
+    if (!doc) {
+      if (magnifiedImage) download(magnifiedImage, 'png')
+      return
     }
-  }, [magnifiedImage, magnification])
+    setPdfExportProgress({ done: 0, total: doc.numPages })
+    setError(null)
+    let url: string | null = null
+    try {
+      const bytes = await buildMagnifiedPdf(doc, magnification, (done, total) =>
+        setPdfExportProgress({ done, total })
+      )
+      url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }))
+      download(url, 'pdf')
+    } catch {
+      setError('PDF の生成に失敗しました')
+    } finally {
+      if (url) URL.revokeObjectURL(url)
+      setPdfExportProgress(null)
+    }
+  }, [magnifiedImage, magnification, download])
 
   return (
     <div className="app">
@@ -269,7 +407,7 @@ const App: React.FC = () => {
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/*"
+          accept="image/*,application/pdf"
           onChange={handleFileChange}
           style={{ display: 'none' }}
         />
@@ -286,31 +424,61 @@ const App: React.FC = () => {
                     </span>
                   )}
                 </h3>
-                <button
-                  className="btn-secondary"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    setOriginalImage(null)
-                    setMagnifiedImage(null)
-                    setImageSize(null)
-                  }}
-                >
-                  <svg
-                    width="14"
-                    height="14"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
+                <div className="image-card-actions">
+                  {pdfPageCount > 1 && (
+                    <div className="page-selector">
+                      <button
+                        className="preset-btn"
+                        disabled={pdfPage <= 1}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handlePageChange(-1)
+                        }}
+                      >
+                        ‹
+                      </button>
+                      <span className="page-indicator">
+                        {pdfPage} / {pdfPageCount}
+                      </span>
+                      <button
+                        className="preset-btn"
+                        disabled={pdfPage >= pdfPageCount}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handlePageChange(1)
+                        }}
+                      >
+                        ›
+                      </button>
+                    </div>
+                  )}
+                  <button
+                    className="btn-secondary"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setOriginalImage(null)
+                      setMagnifiedImage(null)
+                      setImageSize(null)
+                      clearPdf()
+                    }}
                   >
-                    <path d="M3 6h18" />
-                    <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-                  </svg>
-                  削除
-                </button>
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M3 6h18" />
+                      <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                    </svg>
+                    削除
+                  </button>
+                </div>
               </div>
               <img src={originalImage} alt="Original" />
             </div>
@@ -339,10 +507,15 @@ const App: React.FC = () => {
                       {magnifiedSize && (
                         <span className="image-dimensions">
                           {magnifiedSize.width} x {magnifiedSize.height} px
+                          {pdfPageCount > 0 && ` · 全 ${pdfPageCount} ページ`}
                         </span>
                       )}
                     </h3>
-                    <button onClick={downloadImage} className="btn-primary">
+                    <button
+                      onClick={() => void downloadMagnified()}
+                      disabled={pdfExportProgress !== null}
+                      className="btn-primary"
+                    >
                       <svg
                         width="14"
                         height="14"
@@ -357,13 +530,16 @@ const App: React.FC = () => {
                         <polyline points="7 10 12 15 17 10" />
                         <line x1="12" y1="15" x2="12" y2="3" />
                       </svg>
-                      ダウンロード
+                      {pdfExportProgress
+                        ? `PDF 生成中… ${pdfExportProgress.done} / ${pdfExportProgress.total}`
+                        : 'ダウンロード'}
                     </button>
                   </div>
+                  {/* PDF はベクター描画なので pixelated を当てない */}
                   <img
                     src={magnifiedImage}
                     alt="Magnified"
-                    className="pixelated"
+                    className={pdfPageCount > 0 ? undefined : 'pixelated'}
                   />
                 </div>
               )
@@ -384,9 +560,11 @@ const App: React.FC = () => {
               <circle cx="8.5" cy="8.5" r="1.5" />
               <path d="M21 15l-5-5L5 21" />
             </svg>
-            <p className="drop-message-text">画像をここにドラッグ&ドロップ</p>
+            <p className="drop-message-text">
+              画像または PDF をここにドラッグ&ドロップ
+            </p>
             <p className="drop-message-hint">
-              または <span>ファイルを選択</span> / Cmd/Ctrl+V でペースト
+              または <span>ファイルを選択</span> / 画像は Cmd/Ctrl+V でペースト
             </p>
           </div>
         )}
