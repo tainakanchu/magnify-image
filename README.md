@@ -5,6 +5,8 @@
 
 処理はすべてブラウザ内（Canvas API）で完結し、画像がサーバーに送信されることはありません。
 
+**Demo:** https://magnify-image.vercel.app/
+
 ## 機能
 
 - **画像の読み込み**
@@ -66,7 +68,7 @@ yarn dev
 
 ## デプロイ
 
-[Vercel](https://vercel.com/) へのデプロイを想定しており、設定は `vercel.json` に記載しています。
+[Vercel](https://vercel.com/) に https://magnify-image.vercel.app/ としてデプロイしています。設定は `vercel.json` に記載しています。
 静的サイトとしてビルドされるため、`dist/` を配信できる任意のホスティングでも動作します。
 
 ## ディレクトリ構成
