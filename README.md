@@ -32,10 +32,10 @@
 
 ## 技術スタック
 
-- [React](https://react.dev/) 18
-- [TypeScript](https://www.typescriptlang.org/)
-- [Vite](https://vitejs.dev/) 5
-- ESLint / Prettier
+- [React](https://react.dev/) 19
+- [TypeScript](https://www.typescriptlang.org/) 7
+- [Vite](https://vitejs.dev/) 8
+- [oxlint](https://oxc.rs/docs/guide/usage/linter.html) / Prettier
 
 外部ライブラリへの依存は React / React DOM のみで、画像処理はブラウザ標準の Canvas API を使用しています。
 
@@ -43,28 +43,28 @@
 
 ### 必要環境
 
-- Node.js 18 以上
-- yarn（`yarn.lock` を同梱）
+- Node.js 20.19 以上（22.12 以上を推奨）
+- pnpm（`pnpm-lock.yaml` を同梱）
 
 ### セットアップ
 
 ```bash
-yarn install
-yarn dev
+pnpm install
+pnpm dev
 ```
 
 開発サーバーが起動したら、表示された URL（既定は http://localhost:5173）をブラウザで開いてください。
 
 ### スクリプト
 
-| コマンド          | 内容                                     |
-| ----------------- | ---------------------------------------- |
-| `yarn dev`        | 開発サーバーを起動                       |
-| `yarn build`      | 型チェック後、`dist/` に本番ビルドを出力 |
-| `yarn preview`    | ビルド成果物をローカルでプレビュー       |
-| `yarn lint`       | ESLint を実行（警告 0 件を要求）         |
-| `yarn type-check` | `tsc --noEmit` による型チェックのみ実行  |
-| `yarn format`     | Prettier でコード整形                    |
+| コマンド          | 内容                                       |
+| ----------------- | ------------------------------------------ |
+| `pnpm dev`        | 開発サーバーを起動                         |
+| `pnpm build`      | 型チェック後、`dist/` に本番ビルドを出力   |
+| `pnpm preview`    | ビルド成果物をローカルでプレビュー         |
+| `pnpm lint`       | oxlint を実行（警告 0 件を要求）           |
+| `pnpm type-check` | `tsc -b --noEmit` による型チェックのみ実行 |
+| `pnpm format`     | Prettier でコード整形                      |
 
 ## デプロイ
 
@@ -82,6 +82,10 @@ yarn dev
 │   ├── App.css         # アプリのスタイル
 │   └── index.css       # グローバルスタイル
 ├── vite.config.ts
+├── .oxlintrc.json
+├── tsconfig.json      # プロジェクト参照のルート
+├── tsconfig.app.json  # src/ 向け
+├── tsconfig.node.json # vite.config.ts 向け
 ├── vercel.json
 └── package.json
 ```
