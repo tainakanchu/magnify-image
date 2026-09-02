@@ -30,8 +30,22 @@ function getDpiLevel(dpi: number): 'low' | 'ok' | 'good' {
   return 'good'
 }
 
+// 拡張子を除いた元ファイル名を先頭に付与する。name が空なら従来の命名にフォールバック
+function buildDownloadName(
+  sourceName: string | null,
+  magnification: number,
+  extension: string
+): string {
+  const suffix = `magnified_${magnification}x.${extension}`
+  if (!sourceName) return suffix
+  const dotIndex = sourceName.lastIndexOf('.')
+  const basename = dotIndex > 0 ? sourceName.slice(0, dotIndex) : sourceName
+  return `${basename}_${suffix}`
+}
+
 const App: React.FC = () => {
   const [originalImage, setOriginalImage] = useState<string | null>(null)
+  const [sourceName, setSourceName] = useState<string | null>(null)
   const [magnifiedImage, setMagnifiedImage] = useState<string | null>(null)
   const [imageSize, setImageSize] = useState<ImageSize | null>(null)
   const [magnification, setMagnification] = useState<number>(() => {
@@ -179,6 +193,7 @@ const App: React.FC = () => {
         file.type === 'application/pdf' ||
         (!file.type && file.name.toLowerCase().endsWith('.pdf'))
       ) {
+        setSourceName(file.name)
         void processPdf(file)
         return
       }
@@ -186,6 +201,7 @@ const App: React.FC = () => {
         setError('画像または PDF ファイルを選択してください')
         return
       }
+      setSourceName(file.name)
       clearPdf()
       const reader = new FileReader()
       reader.onload = (event) => {
@@ -335,10 +351,10 @@ const App: React.FC = () => {
     (href: string, extension: string) => {
       const link = document.createElement('a')
       link.href = href
-      link.download = `magnified_${magnification}x.${extension}`
+      link.download = buildDownloadName(sourceName, magnification, extension)
       link.click()
     },
-    [magnification]
+    [magnification, sourceName]
   )
 
   // PDF は表示中のページだけでなく全ページを拡大して 1 つの PDF に束ねる
@@ -459,6 +475,7 @@ const App: React.FC = () => {
                       setOriginalImage(null)
                       setMagnifiedImage(null)
                       setImageSize(null)
+                      setSourceName(null)
                       clearPdf()
                     }}
                   >
