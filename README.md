@@ -1,27 +1,34 @@
 # Magnify Image
 
-ドラッグ&ドロップした画像を、指定倍率でピクセルパーフェクトに拡大するWebアプリです。
-ドット絵や小さなアイコンを、ぼかさずに整数倍で引き伸ばして保存できます。
+ドラッグ&ドロップした画像や PDF を、指定倍率で拡大するWebアプリです。
+画像はピクセルパーフェクトに（ドット絵や小さなアイコンをぼかさず整数倍で）、PDF は全ページをベクター描画で拡大して保存できます。
 
-処理はすべてブラウザ内（Canvas API）で完結し、画像がサーバーに送信されることはありません。
+処理はすべてブラウザ内（Canvas API / pdf.js）で完結し、ファイルがサーバーに送信されることはありません。
 
 **Demo:** https://magnify-image.vercel.app/
 
 ## 機能
 
-- **画像の読み込み**
+- **ファイルの読み込み**
   - ドラッグ&ドロップ
   - クリックしてファイル選択
-  - クリップボードからペースト（Cmd/Ctrl + V）
+  - クリップボードからペースト（Cmd/Ctrl + V、画像のみ）
+  - 対応形式: 画像（PNG / JPEG など）と PDF
 - **倍率の指定**
   - プリセット: 2x / 4x / 8x / 16x
   - 任意の整数倍率（1〜50）を数値入力
   - 既定は 4 倍
-- **ピクセルパーフェクト拡大**
+- **ピクセルパーフェクト拡大（画像）**
   - `imageSmoothingEnabled = false` によるニアレストネイバー補間
   - 元画像と拡大後の画像をサイズ（px）付きで並べて表示
+- **ベクター拡大（PDF）**
+  - ページを指定倍率のスケールで再描画するため、文字や線がぼやけずくっきり出力されます
+  - Original は 72dpi 相当（viewport scale 1）のページサイズを基準にします
+  - 複数ページの PDF はページを切り替えて拡大できます（既定は 1 ページ目）
+  - パスワード付き PDF には対応していません
 - **ダウンロード**
-  - 拡大後の画像を PNG（`magnified_{倍率}x.png`）として保存
+  - 画像: 拡大後の画像を PNG（`magnified_{倍率}x.png`）として保存
+  - PDF: 全ページを倍率で拡大した PDF（`magnified_{倍率}x.pdf`）として保存（1px = 1pt でページ自体が大きくなります）
 - **DPI 計算**
   - 拡大後の画像を指定の幅で印刷した場合の DPI を算出
   - 用紙プリセット: A4 / A5 / A3 / B5 / はがき
@@ -35,9 +42,10 @@
 - [React](https://react.dev/) 19
 - [TypeScript](https://www.typescriptlang.org/) 7
 - [Vite](https://vitejs.dev/) 8
+- [pdf.js](https://mozilla.github.io/pdf.js/)（`pdfjs-dist`） / [pdf-lib](https://pdf-lib.js.org/)
 - [oxlint](https://oxc.rs/docs/guide/usage/linter.html) / Prettier
 
-外部ライブラリへの依存は React / React DOM のみで、画像処理はブラウザ標準の Canvas API を使用しています。
+実行時の依存は React / React DOM と pdf.js / pdf-lib のみです。画像処理はブラウザ標準の Canvas API、PDF の描画は pdf.js、拡大 PDF の生成は pdf-lib で行います。pdf.js の worker もローカルにバンドルするため、外部への通信は発生しません。
 
 ## 開発
 
@@ -79,6 +87,7 @@ pnpm dev
 ├── src/
 │   ├── main.tsx        # React のマウント
 │   ├── App.tsx         # アプリ本体（読み込み・拡大・DPI 計算・UI）
+│   ├── pdf.ts          # PDF の読み込み・ページ描画・拡大 PDF の生成
 │   ├── App.css         # アプリのスタイル
 │   └── index.css       # グローバルスタイル
 ├── vite.config.ts
