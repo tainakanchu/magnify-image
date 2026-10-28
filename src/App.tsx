@@ -203,6 +203,7 @@ const App: React.FC = () => {
       }
       setSourceName(file.name)
       clearPdf()
+      setIsProcessing(true)
       const reader = new FileReader()
       reader.onload = (event) => {
         const imageUrl = event.target?.result as string
@@ -210,6 +211,7 @@ const App: React.FC = () => {
         magnifyImage(imageUrl, magnification)
       }
       reader.onerror = () => {
+        setIsProcessing(false)
         setError('ファイルの読み込みに失敗しました')
       }
       reader.readAsDataURL(file)
@@ -500,66 +502,49 @@ const App: React.FC = () => {
               <img src={originalImage} alt="Original" />
             </div>
 
-            {isProcessing ? (
-              <div className="loading-container">
-                <div className="loading-spinner"></div>
-                <p>処理中...</p>
-              </div>
-            ) : error ? (
-              <div className="error-container">
-                <p className="error-message">{error}</p>
-                <button
-                  onClick={() => setError(null)}
-                  className="btn-secondary"
-                >
-                  再試行
-                </button>
-              </div>
-            ) : (
-              magnifiedImage && (
-                <div className="image-card">
-                  <div className="image-card-header">
-                    <h3 className="image-card-title">
-                      Magnified ({magnification}x)
-                      {magnifiedSize && (
-                        <span className="image-dimensions">
-                          {magnifiedSize.width} x {magnifiedSize.height} px
-                          {pdfPageCount > 0 && ` · 全 ${pdfPageCount} ページ`}
-                        </span>
-                      )}
-                    </h3>
-                    <button
-                      onClick={() => void downloadMagnified()}
-                      disabled={pdfExportProgress !== null}
-                      className="btn-primary"
+            {!isProcessing && !error && magnifiedImage && (
+              <div className="image-card">
+                <div className="image-card-header">
+                  <h3 className="image-card-title">
+                    Magnified ({magnification}x)
+                    {magnifiedSize && (
+                      <span className="image-dimensions">
+                        {magnifiedSize.width} x {magnifiedSize.height} px
+                        {pdfPageCount > 0 && ` · 全 ${pdfPageCount} ページ`}
+                      </span>
+                    )}
+                  </h3>
+                  <button
+                    onClick={() => void downloadMagnified()}
+                    disabled={pdfExportProgress !== null}
+                    className="btn-primary"
+                  >
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
                     >
-                      <svg
-                        width="14"
-                        height="14"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                        <polyline points="7 10 12 15 17 10" />
-                        <line x1="12" y1="15" x2="12" y2="3" />
-                      </svg>
-                      {pdfExportProgress
-                        ? `PDF 生成中… ${pdfExportProgress.done} / ${pdfExportProgress.total}`
-                        : 'ダウンロード'}
-                    </button>
-                  </div>
-                  {/* PDF はベクター描画なので pixelated を当てない */}
-                  <img
-                    src={magnifiedImage}
-                    alt="Magnified"
-                    className={pdfPageCount > 0 ? undefined : 'pixelated'}
-                  />
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                      <polyline points="7 10 12 15 17 10" />
+                      <line x1="12" y1="15" x2="12" y2="3" />
+                    </svg>
+                    {pdfExportProgress
+                      ? `PDF 生成中… ${pdfExportProgress.done} / ${pdfExportProgress.total}`
+                      : 'ダウンロード'}
+                  </button>
                 </div>
-              )
+                {/* PDF はベクター描画なので pixelated を当てない */}
+                <img
+                  src={magnifiedImage}
+                  alt="Magnified"
+                  className={pdfPageCount > 0 ? undefined : 'pixelated'}
+                />
+              </div>
             )}
           </div>
         ) : (
@@ -586,6 +571,20 @@ const App: React.FC = () => {
           </div>
         )}
       </div>
+
+      {isProcessing ? (
+        <div className="loading-container">
+          <div className="loading-spinner"></div>
+          <p>処理中...</p>
+        </div>
+      ) : error ? (
+        <div className="error-container">
+          <p className="error-message">{error}</p>
+          <button onClick={() => setError(null)} className="btn-secondary">
+            閉じる
+          </button>
+        </div>
+      ) : null}
 
       {magnifiedSize && (
         <div className="dpi-calculator">
