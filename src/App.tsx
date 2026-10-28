@@ -19,6 +19,26 @@ const PAPER_SIZES = [
   { label: 'はがき', width: 100 },
 ] as const
 
+const INPUT_LIMITS = {
+  magnification: { min: 1, max: 50, fallback: 4, integer: true },
+  printWidthMm: { min: 1, max: 2000, fallback: 210, integer: false },
+} as const
+
+function validateInput(value: string | null, key: keyof typeof INPUT_LIMITS) {
+  const { min, max, fallback, integer } = INPUT_LIMITS[key]
+  const number = value?.trim() ? Number(value) : NaN
+  if (!Number.isFinite(number)) return fallback
+  return Math.min(max, Math.max(min, integer ? Math.trunc(number) : number))
+}
+
+function restoreInput(key: keyof typeof INPUT_LIMITS) {
+  try {
+    return validateInput(localStorage.getItem(key), key)
+  } catch {
+    return INPUT_LIMITS[key].fallback
+  }
+}
+
 interface ImageSize {
   width: number
   height: number
@@ -48,17 +68,15 @@ const App: React.FC = () => {
   const [sourceName, setSourceName] = useState<string | null>(null)
   const [magnifiedImage, setMagnifiedImage] = useState<string | null>(null)
   const [imageSize, setImageSize] = useState<ImageSize | null>(null)
-  const [magnification, setMagnification] = useState<number>(() => {
-    const saved = localStorage.getItem('magnification')
-    return saved ? parseInt(saved) : 4
-  })
+  const [magnification, setMagnification] = useState<number>(() =>
+    restoreInput('magnification')
+  )
   const [isDragging, setIsDragging] = useState<boolean>(false)
   const [isProcessing, setIsProcessing] = useState<boolean>(false)
   const [error, setError] = useState<string | null>(null)
-  const [printWidthMm, setPrintWidthMm] = useState<number>(() => {
-    const saved = localStorage.getItem('printWidthMm')
-    return saved ? parseFloat(saved) : 210
-  })
+  const [printWidthMm, setPrintWidthMm] = useState<number>(() =>
+    restoreInput('printWidthMm')
+  )
   const [pdfPageCount, setPdfPageCount] = useState<number>(0)
   const [pdfPage, setPdfPage] = useState<number>(1)
   const [pdfExportProgress, setPdfExportProgress] = useState<{
@@ -278,19 +296,22 @@ const App: React.FC = () => {
 
   const handleMagnificationChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      const value = parseInt(e.target.value)
-      if (isNaN(value) || value < 1) return
-      setMagnification(value)
+      if (!(Number(e.target.value) >= INPUT_LIMITS.magnification.min)) return
+      setMagnification(validateInput(e.target.value, 'magnification'))
     },
     []
   )
 
   useEffect(() => {
-    localStorage.setItem('magnification', magnification.toString())
+    try {
+      localStorage.setItem('magnification', magnification.toString())
+    } catch {}
   }, [magnification])
 
   useEffect(() => {
-    localStorage.setItem('printWidthMm', printWidthMm.toString())
+    try {
+      localStorage.setItem('printWidthMm', printWidthMm.toString())
+    } catch {}
   }, [printWidthMm])
 
   const magnifiedSize = useMemo<ImageSize | null>(() => {
@@ -394,8 +415,8 @@ const App: React.FC = () => {
         <span className="controls-label">倍率</span>
         <input
           type="number"
-          min="1"
-          max="50"
+          min={INPUT_LIMITS.magnification.min}
+          max={INPUT_LIMITS.magnification.max}
           value={magnification}
           onChange={handleMagnificationChange}
           onBlur={handleMagnificationBlur}
@@ -610,12 +631,13 @@ const App: React.FC = () => {
             <span className="controls-label">印刷幅</span>
             <input
               type="number"
-              min="1"
-              max="2000"
+              min={INPUT_LIMITS.printWidthMm.min}
+              max={INPUT_LIMITS.printWidthMm.max}
               value={printWidthMm}
               onChange={(e) => {
-                const v = parseFloat(e.target.value)
-                if (!isNaN(v) && v > 0) setPrintWidthMm(v)
+                if (!(Number(e.target.value) >= INPUT_LIMITS.printWidthMm.min))
+                  return
+                setPrintWidthMm(validateInput(e.target.value, 'printWidthMm'))
               }}
               className="magnification-input"
             />
