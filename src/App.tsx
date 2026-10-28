@@ -294,6 +294,7 @@ const App: React.FC = () => {
 
   const handleMagnificationChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (!(Number(e.target.value) >= INPUT_LIMITS.magnification.min)) return
       setMagnification(validateInput(e.target.value, 'magnification'))
     },
     []
@@ -635,6 +636,8 @@ const App: React.FC = () => {
               max={INPUT_LIMITS.printWidthMm.max}
               value={printWidthMm}
               onChange={(e) => {
+                if (!(Number(e.target.value) >= INPUT_LIMITS.printWidthMm.min))
+                  return
                 setPrintWidthMm(validateInput(e.target.value, 'printWidthMm'))
               }}
               className="magnification-input"
