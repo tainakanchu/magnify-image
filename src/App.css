@@ -167,12 +167,15 @@
   margin: 0;
 }
 
-.drop-message-hint span {
+.drop-message-hint button {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
   color: var(--color-accent);
-  cursor: pointer;
 }
 
-.drop-message-hint span:hover {
+.drop-message-hint button:hover {
   text-decoration: underline;
 }
 
