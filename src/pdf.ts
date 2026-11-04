@@ -17,7 +17,17 @@ export interface PdfPageRender {
 }
 
 export function loadPdfDocument(data: ArrayBuffer): Promise<PDFDocumentProxy> {
-  return pdfjsLib.getDocument({ data }).promise
+  const assetUrl = new URL(
+    `${import.meta.env.BASE_URL}pdfjs/`,
+    document.baseURI
+  )
+  return pdfjsLib.getDocument({
+    data,
+    cMapUrl: new URL('cmaps/', assetUrl).href,
+    cMapPacked: true,
+    standardFontDataUrl: new URL('standard_fonts/', assetUrl).href,
+    wasmUrl: new URL('wasm/', assetUrl).href,
+  }).promise
 }
 
 // pdf.js 6 では PDFDocumentProxy.destroy() が無く、破棄は loadingTask 側に移っている
