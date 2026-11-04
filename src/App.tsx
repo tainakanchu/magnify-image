@@ -412,8 +412,11 @@ const App: React.FC = () => {
       </header>
 
       <div className="controls">
-        <span className="controls-label">倍率</span>
+        <label className="controls-label" htmlFor="magnification">
+          倍率
+        </label>
         <input
+          id="magnification"
           type="number"
           min={INPUT_LIMITS.magnification.min}
           max={INPUT_LIMITS.magnification.max}
@@ -468,6 +471,7 @@ const App: React.FC = () => {
                     <div className="page-selector">
                       <button
                         className="preset-btn"
+                        aria-label="前のページ"
                         disabled={pdfPage <= 1}
                         onClick={(e) => {
                           e.stopPropagation()
@@ -481,6 +485,7 @@ const App: React.FC = () => {
                       </span>
                       <button
                         className="preset-btn"
+                        aria-label="次のページ"
                         disabled={pdfPage >= pdfPageCount}
                         onClick={(e) => {
                           e.stopPropagation()
@@ -587,7 +592,8 @@ const App: React.FC = () => {
               画像または PDF をここにドラッグ&ドロップ
             </p>
             <p className="drop-message-hint">
-              または <span>ファイルを選択</span> / 画像は Cmd/Ctrl+V でペースト
+              または <button type="button">ファイルを選択</button> / 画像は
+              Cmd/Ctrl+V でペースト
             </p>
           </div>
         )}
@@ -628,8 +634,11 @@ const App: React.FC = () => {
             </div>
           </div>
           <div className="dpi-calculator-row" style={{ marginTop: '0.5rem' }}>
-            <span className="controls-label">印刷幅</span>
+            <label className="controls-label" htmlFor="print-width">
+              印刷幅
+            </label>
             <input
+              id="print-width"
               type="number"
               min={INPUT_LIMITS.printWidthMm.min}
               max={INPUT_LIMITS.printWidthMm.max}
