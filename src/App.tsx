@@ -264,6 +264,7 @@ const App: React.FC = () => {
       const files = e.target.files
       if (files && files.length > 0) {
         processFile(files[0])
+        e.target.value = ''
       }
     },
     [processFile]
