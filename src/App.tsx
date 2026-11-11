@@ -66,7 +66,10 @@ function buildDownloadName(
 const App: React.FC = () => {
   const [originalImage, setOriginalImage] = useState<string | null>(null)
   const [sourceName, setSourceName] = useState<string | null>(null)
-  const [magnifiedImage, setMagnifiedImage] = useState<string | null>(null)
+  const [magnifiedImage, setMagnifiedImage] = useState<{
+    dataUrl: string
+    scale: number
+  } | null>(null)
   const [imageSize, setImageSize] = useState<ImageSize | null>(null)
   const [magnification, setMagnification] = useState<number>(() =>
     restoreInput('magnification')
@@ -115,7 +118,7 @@ const App: React.FC = () => {
         ctx.imageSmoothingEnabled = false
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
         const magnifiedDataUrl = canvas.toDataURL('image/png')
-        setMagnifiedImage(magnifiedDataUrl)
+        setMagnifiedImage({ dataUrl: magnifiedDataUrl, scale })
         setIsProcessing(false)
       } catch {
         setIsProcessing(false)
@@ -149,7 +152,7 @@ const App: React.FC = () => {
       setError(null)
       try {
         const rendered = await renderPdfPage(doc, pageNumber, scale)
-        setMagnifiedImage(rendered.dataUrl)
+        setMagnifiedImage({ dataUrl: rendered.dataUrl, scale })
       } catch {
         setError('PDF の描画に失敗しました')
       } finally {
@@ -315,12 +318,12 @@ const App: React.FC = () => {
   }, [printWidthMm])
 
   const magnifiedSize = useMemo<ImageSize | null>(() => {
-    if (!imageSize) return null
+    if (!imageSize || !magnifiedImage) return null
     return {
-      width: imageSize.width * magnification,
-      height: imageSize.height * magnification,
+      width: imageSize.width * magnifiedImage.scale,
+      height: imageSize.height * magnifiedImage.scale,
     }
-  }, [imageSize, magnification])
+  }, [imageSize, magnifiedImage])
 
   const dpiInfo = useMemo(() => {
     if (!magnifiedSize || !printWidthMm || printWidthMm <= 0) return null
@@ -372,27 +375,35 @@ const App: React.FC = () => {
 
   const download = useCallback(
     (href: string, extension: string) => {
+      if (!magnifiedImage) return
       const link = document.createElement('a')
       link.href = href
-      link.download = buildDownloadName(sourceName, magnification, extension)
+      link.download = buildDownloadName(
+        sourceName,
+        magnifiedImage.scale,
+        extension
+      )
       link.click()
     },
-    [magnification, sourceName]
+    [magnifiedImage, sourceName]
   )
 
   // PDF は表示中のページだけでなく全ページを拡大して 1 つの PDF に束ねる
   const downloadMagnified = useCallback(async () => {
+    if (!magnifiedImage) return
     const doc = pdfDocRef.current
     if (!doc) {
-      if (magnifiedImage) download(magnifiedImage, 'png')
+      download(magnifiedImage.dataUrl, 'png')
       return
     }
     setPdfExportProgress({ done: 0, total: doc.numPages })
     setError(null)
     let url: string | null = null
     try {
-      const bytes = await buildMagnifiedPdf(doc, magnification, (done, total) =>
-        setPdfExportProgress({ done, total })
+      const bytes = await buildMagnifiedPdf(
+        doc,
+        magnifiedImage.scale,
+        (done, total) => setPdfExportProgress({ done, total })
       )
       url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }))
       download(url, 'pdf')
@@ -402,7 +413,7 @@ const App: React.FC = () => {
       if (url) URL.revokeObjectURL(url)
       setPdfExportProgress(null)
     }
-  }, [magnifiedImage, magnification, download])
+  }, [magnifiedImage, download])
 
   return (
     <div className="app">
@@ -532,7 +543,7 @@ const App: React.FC = () => {
               <div className="image-card">
                 <div className="image-card-header">
                   <h3 className="image-card-title">
-                    Magnified ({magnification}x)
+                    Magnified ({magnifiedImage.scale}x)
                     {magnifiedSize && (
                       <span className="image-dimensions">
                         {magnifiedSize.width} x {magnifiedSize.height} px
@@ -566,7 +577,7 @@ const App: React.FC = () => {
                 </div>
                 {/* PDF はベクター描画なので pixelated を当てない */}
                 <img
-                  src={magnifiedImage}
+                  src={magnifiedImage.dataUrl}
                   alt="Magnified"
                   className={pdfPageCount > 0 ? undefined : 'pixelated'}
                 />
