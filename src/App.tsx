@@ -1,12 +1,13 @@
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import './App.css'
-import {
-  buildMagnifiedPdf,
-  destroyPdfDocument,
-  loadPdfDocument,
-  renderPdfPage,
-} from './pdf'
 import type { PDFDocumentProxy } from './pdf'
+
+// PDF を扱うときだけ読み込み、同期的な破棄処理でも使えるよう保持する
+let pdfModule: typeof import('./pdf') | undefined
+
+async function getPdfModule() {
+  return (pdfModule ??= await import('./pdf'))
+}
 
 const PRESETS = [2, 4, 8, 16] as const
 const MM_PER_INCH = 25.4
@@ -133,7 +134,7 @@ const App: React.FC = () => {
 
   const clearPdf = useCallback(() => {
     if (pdfDocRef.current) {
-      destroyPdfDocument(pdfDocRef.current)
+      pdfModule?.destroyPdfDocument(pdfDocRef.current)
       pdfDocRef.current = null
     }
     setPdfPageCount(0)
@@ -148,6 +149,7 @@ const App: React.FC = () => {
       setMagnifiedImage(null)
       setError(null)
       try {
+        const { renderPdfPage } = await getPdfModule()
         const rendered = await renderPdfPage(doc, pageNumber, scale)
         setMagnifiedImage(rendered.dataUrl)
       } catch {
@@ -166,6 +168,7 @@ const App: React.FC = () => {
       if (!doc) return
       setIsProcessing(true)
       try {
+        const { renderPdfPage } = await getPdfModule()
         const base = await renderPdfPage(doc, pageNumber, 1)
         setOriginalImage(base.dataUrl)
         setImageSize({ width: base.width, height: base.height })
@@ -187,6 +190,7 @@ const App: React.FC = () => {
       setImageSize(null)
       setIsProcessing(true)
       try {
+        const { loadPdfDocument } = await getPdfModule()
         const doc = await loadPdfDocument(await file.arrayBuffer())
         pdfDocRef.current = doc
         setPdfPageCount(doc.numPages)
@@ -391,6 +395,7 @@ const App: React.FC = () => {
     setError(null)
     let url: string | null = null
     try {
+      const { buildMagnifiedPdf } = await getPdfModule()
       const bytes = await buildMagnifiedPdf(doc, magnification, (done, total) =>
         setPdfExportProgress({ done, total })
       )
